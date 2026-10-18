@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Geo V5.2: Livestream Địa Lí - Blackout</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f0f13;
+            --primary: #ff0050; /* TikTok Pink */
+            --secondary: #00f2fe; /* TikTok Blue */
+            --success: #00e676;
+            --danger: #ff1744;
+            --text-main: #ffffff;
+            --glass: rgba(15, 15, 19, 0.7);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; user-select: none; }
+        
+        body { background-color: #000; color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+
+        #app-container { width: 100%; max-width: 450px; height: 100%; max-height: 850px; position: relative; background: var(--bg-dark); box-shadow: 0 0 50px rgba(0, 242, 254, 0.3); overflow: hidden; border-radius: 10px; }
+
+        /* --- PRELOADER --- */
+        #preloader { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-dark); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { width: 60px; height: 60px; border: 5px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 25px;}
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- LAZE ĐĂNG NHẬP --- */
+        .laser-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: -1; background: #050505; }
+        .laser { position: absolute; bottom: -10%; width: 6px; height: 150%; background: #fff; transform-origin: bottom center; opacity: 0.6; mix-blend-mode: screen; border-radius: 50%;}
+        .laser:nth-child(1) { left: 15%; animation: sweep1 3.5s infinite alternate ease-in-out; background: var(--primary); box-shadow: 0 0 20px 8px rgba(255, 0, 80, 0.8); }
+        .laser:nth-child(2) { left: 50%; animation: sweep2 2.8s infinite alternate ease-in-out; background: var(--secondary); box-shadow: 0 0 20px 8px rgba(0, 242, 254, 0.8); }
+        .laser:nth-child(3) { left: 85%; animation: sweep3 4.2s infinite alternate ease-in-out; background: var(--success); box-shadow: 0 0 20px 8px rgba(0, 230, 118, 0.8); }
+
+        @keyframes sweep1 { 0% { transform: rotate(-50deg); opacity: 0.4;} 100% { transform: rotate(60deg); opacity: 1;} }
+        @keyframes sweep2 { 0% { transform: rotate(40deg); opacity: 1;} 100% { transform: rotate(-40deg); opacity: 0.5;} }
+        @keyframes sweep3 { 0% { transform: rotate(-60deg); opacity: 0.6;} 100% { transform: rotate(50deg); opacity: 1;} }
+
+        /* --- SCREENS --- */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--glass); z-index: 20; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);}
+
+        h1 { color: var(--text-main); font-weight: 900; letter-spacing: 1px; font-size: 28px; text-transform: uppercase; text-shadow: 2px 2px 0px var(--secondary), -2px -2px 0px var(--primary); margin-bottom: 10px;}
+        .story-board { background: rgba(0,0,0,0.6); border-radius: 15px; padding: 15px; margin-bottom: 20px; width: 100%; text-align: left; font-size: 14px; line-height: 1.5; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 0 15px rgba(0,0,0,0.5);}
+        .story-board b { color: var(--secondary); }
+
+        .input-group { margin-bottom: 15px; width: 100%; text-align: left;}
+        .input-group label { display: block; font-weight: bold; color: #ccc; margin-bottom: 5px; font-size: 12px; text-transform: uppercase; text-shadow: 1px 1px 2px #000;}
+        .input-group input { width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #555; color: #fff; border-radius: 8px; font-size: 16px; outline: none; font-weight: bold;}
+        .input-group input:focus { border-color: var(--secondary); box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);}
+
+        .diff-selector { display: flex; gap: 10px; width: 100%; margin-bottom: 15px; }
+        .diff-btn { flex: 1; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #555; color: #aaa; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;}
+        .diff-btn.active { background: rgba(0, 242, 254, 0.15); border-color: var(--secondary); color: var(--secondary); box-shadow: 0 0 15px rgba(0,242,254,0.4); text-shadow: 0 0 5px var(--secondary);}
+
+        button.action-btn { width: 100%; padding: 16px; background: linear-gradient(45deg, var(--primary), var(--secondary)); color: #fff; border: none; border-radius: 8px; font-size: 18px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; box-shadow: 0 5px 20px rgba(255,0,80,0.5); margin-top: 5px;}
+        button.action-btn:active { transform: scale(0.95); box-shadow: 0 2px 10px rgba(255,0,80,0.5);}
+        button.action-btn:disabled { background: #444; box-shadow: none; color: #777; cursor: not-allowed; }
+        .btn-pulse { animation: pulseDanger 1.5s infinite; background: var(--secondary) !important; color: #000 !important; box-shadow: 0 0 20px rgba(0, 242, 254, 0.6) !important;}
+
+        /* --- GAMEPLAY LIVESTREAM HUD --- */
+        #game-screen { 
+            display: none; flex-direction: column; height: 100%; width: 100%; position: relative; 
+            background: linear-gradient(rgba(20, 20, 30, 0.7), rgba(15, 15, 20, 0.95)), url('https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&q=80&w=800') center/cover no-repeat;
+        }
+        
+        .streamer-cam { position: absolute; top:0; left:0; width: 100%; height: 35%; background: rgba(0,0,0,0.4); border-bottom: 2px solid var(--primary); display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 1;}
+        .streamer-cam::after { content: '🎥 LIVE'; position: absolute; top: 15px; left: 15px; background: var(--primary); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; animation: blink 2s infinite; }
+        .streamer-avatar { font-size: 80px; filter: drop-shadow(0 0 20px var(--secondary)); animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .live-hud { position: absolute; top: 15px; right: 15px; z-index: 5; display: flex; gap: 10px; align-items: center; }
+        .viewer-count { background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 15px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px; border: 1px solid #333;}
+        .timer-box { font-size: 16px; font-weight: 900; color: #fff; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.4);}
+
+        .interaction-container { position: absolute; top: 60px; left: 15px; right: 15px; z-index: 5; }
+        .interaction-label { font-size: 12px; font-weight: bold; margin-bottom: 5px; text-shadow: 1px 1px 3px #000; color: #ffeb3b;}
+        .progress-bg { width: 100%; height: 14px; background: rgba(0,0,0,0.6); border-radius: 7px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);}
+        .progress-bar { height: 100%; width: 50%; background: linear-gradient(90deg, var(--danger), var(--success), var(--secondary)); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .chat-container { position: absolute; bottom: 200px; left: 15px; width: 75%; height: 30%; overflow: hidden; z-index: 5; display: flex; flex-direction: column; justify-content: flex-end; mask-image: linear-gradient(to top, rgba(0,0,0,1) 60%, rgba(0,0,0,0)); -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 60%, rgba(0,0,0,0));}
+        .chat-msg { background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 15px; margin-bottom: 8px; font-size: 13px; line-height: 1.4; animation: slideIn 0.3s ease-out; word-wrap: break-word; border-left: 2px solid var(--secondary);}
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .chat-user { font-weight: bold; color: var(--secondary); margin-right: 5px; }
+
+        .event-box { position: absolute; bottom: 0; left: 0; width: 100%; height: 200px; background: rgba(15, 15, 20, 0.95); z-index: 10; border-top: 1px solid rgba(255,255,255,0.1); padding: 15px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.8);}
+        
+        .comment-card { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; text-align: center; font-size: 15px; font-weight: bold; margin-bottom: 15px; min-height: 70px; display: flex; align-items: center; justify-content: center; line-height: 1.4; border: 1px solid var(--secondary); box-shadow: 0 0 15px rgba(0,242,254,0.2);}
+        .mod-buttons { display: flex; gap: 15px; z-index: 15;} /* z-index cao để bấm được khi có mặt nạ */
+        .mod-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.1s; display: flex; justify-content: center; align-items: center; gap: 5px; position: relative; z-index: 15;}
+        .btn-true { background: var(--success); color: #000; box-shadow: 0 4px 0 #00b359;}
+        .btn-false { background: var(--danger); color: #fff; box-shadow: 0 4px 0 #cc0033;}
+        .mod-btn:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+
+        .viral-box { text-align: center; position: relative; z-index: 15;}
+        .viral-title { color: #ffeb3b; font-weight: 900; font-size: 18px; margin-bottom: 10px; animation: pulseDanger 0.5s infinite;}
+        .viral-q { font-size: 14px; margin-bottom: 15px; }
+        .viral-timer-bar { width: 100%; height: 5px; background: #333; margin-bottom: 10px; border-radius: 3px; overflow: hidden;}
+        .viral-timer-fill { height: 100%; background: var(--primary); width: 100%; }
+        .viral-options { display: flex; flex-direction: column; gap: 10px;}
+        .viral-opt { padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--secondary); border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; font-family: inherit;}
+        .viral-opt:active { background: rgba(255,255,255,0.3); }
+
+        #particle-canvas { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 8; pointer-events: none; }
+        #hint-toast { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(255, 179, 0, 0.95); color: #000; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 15; opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap; box-shadow: 0 0 20px rgba(255, 179, 0, 0.5);}
+        #hint-toast.show { opacity: 1; }
+
+        /* --- HIỆU ỨNG SPOTLIGHT (MẤT ĐIỆN 10s) --- */
+        #blackout-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), transparent 40px, rgba(0,0,0,0.98) 120px);
+            z-index: 12; pointer-events: none; opacity: 0; transition: opacity 0.3s; display: none;
+        }
+        #blackout-overlay.active { display: block; opacity: 1; }
+        .glitch-text { color: var(--danger); font-size: 24px; font-weight: 900; position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; text-shadow: 2px 0 #0ff, -2px 0 #f00; animation: glitch 0.2s infinite; pointer-events: none; z-index: 13;}
+        @keyframes glitch { 0% { transform: translate(-50%, -50%) skewX(0deg); } 20% { transform: translate(-52%, -50%) skewX(-10deg); } 40% { transform: translate(-48%, -50%) skewX(10deg); } 60% { transform: translate(-50%, -48%) skewX(0deg); } 80% { transform: translate(-50%, -52%) skewX(0deg); } 100% { transform: translate(-50%, -50%) skewX(0deg); } }
+
+        /* --- MÀN HÌNH HỒI SINH (BOSS QUESTION) --- */
+        #boss-modal { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 30; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .boss-box { background: #1a1a24; border: 2px solid var(--danger); border-radius: 15px; padding: 20px; width: 100%; text-align: center; box-shadow: 0 0 30px rgba(255,23,68,0.4); animation: pulseDanger 2s infinite;}
+        @keyframes pulseDanger { 0%, 100% { box-shadow: 0 0 20px rgba(255,23,68,0.4); } 50% { box-shadow: 0 0 40px rgba(255,23,68,0.8); } }
+        .boss-q { font-size: 15px; font-weight: bold; margin-bottom: 20px; color: #fff; line-height: 1.5;}
+        .boss-opt { width: 100%; padding: 12px; margin-bottom: 10px; background: rgba(255,255,255,0.05); border: 1px solid #555; color: #fff; border-radius: 8px; text-align: left; cursor: pointer; font-size: 13px; font-family: inherit;}
+        .boss-opt:active { background: rgba(255,255,255,0.2); }
+
+        /* --- KẾT QUẢ & FLASHCARD --- */
+        .flashcard-box { background: rgba(255,23,68,0.1); border: 1px dashed var(--danger); padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; text-align: left; max-height: 120px; overflow-y: auto;}
+        .flashcard-title { font-size: 12px; color: var(--danger); font-weight: bold; margin-bottom: 5px; text-transform: uppercase;}
+        .flashcard-list { font-size: 12px; color: #fff; line-height: 1.4; list-style-type: square; padding-left: 20px;}
+
+        .leaderboard { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--secondary); border-radius: 8px; padding: 12px; text-align: left; margin-bottom: 15px;}
+        .lb-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333; font-size: 13px;}
+        .lb-item.me { font-weight: bold; color: var(--success); }
+
+        .btn-group { display: flex; gap: 10px; width: 100%; }
+        .btn-group button { flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-transform: uppercase; border: none;}
+        .btn-copy { background: transparent; border: 2px solid var(--secondary); color: var(--secondary); }
+        .btn-restart { background: linear-gradient(45deg, var(--primary), var(--secondary)); color: #fff; }
+
+        .shake { animation: shake 0.4s both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, 0, 0); } 40%, 60% { transform: translate3d(8px, 0, 0); } }
+        .flash-red { animation: flashR 0.3s; }
+        @keyframes flashR { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 50% { box-shadow: inset 0 0 0 100px rgba(255,23,68,0.3); } }
+
+        .epic-win-bg { background: linear-gradient(135deg, #FFD700, #FF8C00) !important; animation: goldPulse 2s infinite alternate;}
+        @keyframes goldPulse { 0% { box-shadow: inset 0 0 20px #FFD700; } 100% { box-shadow: inset 0 0 80px #FFD700; } }
+
+        #mute-btn { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); border: 1px solid #555; border-radius: 50%; width: 40px; height: 40px; color: white; z-index: 100; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Preloader -->
+        <div id="preloader">
+            <div class="spinner" id="loading-spinner"></div>
+            <div id="preloader-text" style="color: var(--secondary); font-weight: bold; letter-spacing: 2px; text-align: center; margin: 0 20px;">ĐANG KẾT NỐI STUDIO...</div>
+            <div id="enter-btn-container" style="display: none; margin-top: 20px;">
+                <button class="action-btn btn-pulse" id="enter-studio-btn" style="width: auto; padding: 15px 40px;">🎙️ BẤM ĐỂ VÀO PHÒNG LIVE</button>
+            </div>
+        </div>
+
+        <button id="mute-btn">🔊</button>
+
+        <!-- SCREEN 1: ONBOARDING & PHÂN HÓA -->
+        <div id="login-screen" class="screen">
+            <div class="laser-container">
+                <div class="laser"></div><div class="laser"></div><div class="laser"></div>
+            </div>
+
+            <div style="font-size: 50px; margin-bottom: 5px; filter: drop-shadow(0 0 10px var(--secondary));">🎧</div>
+            <h1>TOP TRENDING KIẾN TẠO</h1>
+            
+            <div class="story-board">
+                <b>Bối cảnh:</b> Bạn đang Livestream chia sẻ về Thạch quyển và Kiến tạo mảng.<br>
+                <b>Nhiệm vụ:</b> Đọc bình luận và chốt <b>ĐÚNG/SAI</b>. Cẩn thận sự cố <b>Mất điện Studio 10s</b> - hãy vuốt màn hình để soi đèn pin tìm câu hỏi!<br>
+                <b>Mục tiêu:</b> Giữ thanh Tương tác không tụt về 0% để đạt Top Trending!
+            </div>
+
+            <div class="diff-selector">
+                <div class="diff-btn active" data-level="easy" onclick="selectDiff('easy')">🟢 TÂN BINH (90s)</div>
+                <div class="diff-btn" data-level="hard" onclick="selectDiff('hard')">🔴 CHUYÊN GIA (60s)</div>
+            </div>
+
+            <div class="input-group">
+                <label>Tên Idol (Họ Tên):</label>
+                <input type="text" id="player-name" placeholder="Ví dụ: Cường Địa Lí" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>ID Kênh (Lớp):</label>
+                <input type="text" id="player-class" placeholder="10A1" autocomplete="off">
+            </div>
+            <button class="action-btn" id="start-btn" disabled>🔥 PHÁT TRỰC TIẾP NGAY</button>
+        </div>
+
+        <!-- SCREEN 2: GAMEPLAY LIVESTREAM -->
+        <div id="game-screen">
+            <div class="streamer-cam"><div class="streamer-avatar">🌋</div></div>
+            <div class="live-hud">
+                <div class="timer-box">⏱ <span id="timer">60</span>s</div>
+                <div class="viewer-count">👁️ <span id="viewers">1,200</span></div>
+            </div>
+            <div class="interaction-container">
+                <div class="interaction-label">🔥 MỨC ĐỘ TƯƠNG TÁC KÊNH</div>
+                <div class="progress-bg">
+                    <div class="progress-bar" id="inter-bar" style="width: 50%;"></div>
+                </div>
+            </div>
+
+            <div id="hint-toast">Gợi ý: Nhớ kĩ hệ quả của việc Tách xa và Xô vào!</div>
+            
+            <!-- Lớp phủ Blackout 10s Spotlight -->
+            <div id="blackout-overlay"></div>
+            <div id="glitch-warning" class="glitch-text" style="display:none;">⚠️ SỰ CỐ MẤT ĐIỆN 10s ⚠️<br><span style="font-size:14px;color:#fff;text-shadow:none;">Vuốt để soi đèn pin!</span></div>
+
+            <canvas id="particle-canvas"></canvas>
+            <div class="chat-container" id="chat-feed"></div>
+            <div class="event-box" id="event-box"></div>
+        </div>
+
+        <!-- MODAL: HỒI SINH (BOSS QUESTION) -->
+        <div id="boss-modal">
+            <div class="boss-box">
+                <div style="font-size: 40px; margin-bottom: 10px;">📉</div>
+                <div style="color: var(--danger); font-weight: 900; font-size: 20px; margin-bottom: 15px;">KÊNH BỊ TỤT VIEW NGHIÊM TRỌNG!</div>
+                <p style="font-size: 13px; color: #ccc; margin-bottom: 15px;">Kháng cáo bằng cách trả lời đúng câu hỏi cốt lõi để kéo lại 40% tương tác!</p>
+                <div class="boss-q" id="boss-q-text"></div>
+                <div id="boss-options"></div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: RESULT -->
+        <div id="result-screen" class="screen">
+            <div id="result-emoji" style="font-size: 50px; margin-bottom: 5px;">👑</div>
+            <h1 id="result-title" style="font-size: 24px; text-shadow: none;">KẾT QUẢ PHIÊN LIVE</h1>
+            <p id="final-info" style="color: var(--text-main); font-weight: bold; font-size: 14px; margin-bottom: 10px;"></p>
+            
+            <div id="bonus-text" style="font-size: 16px; font-weight: 900; margin-bottom: 15px; color: var(--success);"></div>
+
+            <!-- HỌC TỪ LỖI SAI (FLASHCARD) -->
+            <div class="flashcard-box" id="flashcard-box" style="display: none;">
+                <div class="flashcard-title">🚨 CÁC KIẾN THỨC GÂY TỤT VIEW:</div>
+                <ul class="flashcard-list" id="mistake-list"></ul>
+            </div>
+
+            <!-- BẢNG XẾP HẠNG THẬT LOCALSTORAGE -->
+            <div class="leaderboard">
+                <div style="text-align: center; color: var(--secondary); font-weight: bold; font-size: 12px; margin-bottom: 8px;">TOP 5 IDOL (MÁY NÀY)</div>
+                <div id="lb-content"></div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-copy" id="copy-btn">📋 CHÉP BÁO CÁO</button>
+                <button class="btn-restart" id="restart-btn">LIVE TIẾP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO FILES -->
+    <!-- Nhạc nền Synthwave dồn dập -->
+    <audio id="bgm" src="https://actions.google.com/sounds/v1/science_fiction/sci_fi_chase_fast.ogg" loop preload="auto"></audio>
+    
+    <!-- Tiếng sập cầu dao & Tim đập cho màn Blackout -->
+    <audio id="sfx-poweroff" src="https://actions.google.com/sounds/v1/science_fiction/power_down.ogg" preload="auto"></audio>
+    <audio id="sfx-heartbeat" src="https://actions.google.com/sounds/v1/foley/heartbeat_fast.ogg" loop preload="auto"></audio>
+
+    <audio id="sfx-clap" src="https://actions.google.com/sounds/v1/crowds/small_crowd_cheering_and_clapping.ogg" preload="auto"></audio>
+    <audio id="sfx-aww" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
+    <audio id="sfx-viral" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+    <audio id="sfx-win" src="https://actions.google.com/sounds/v1/crowds/female_cheer.ogg" preload="auto"></audio>
+    <audio id="sfx-lose" src="https://actions.google.com/sounds/v1/human_voices/male_yell.ogg" preload="auto"></audio>
+
+    <script>
+        const gameConfig = {
+            timeLimit: { easy: 90, hard: 60 },
+            trueFacts: [
+                "Thạch quyển gồm vỏ Trái Đất và phần trên manti", "Thạch quyển dày khoảng 100km", 
+                "Cấu tạo bởi các loại đá khác nhau", "Trượt trên lớp quánh dẻo của manti",
+                "Thạch quyển gãy vỡ thành các mảng kiến tạo", "Mảng kiến tạo nổi và dịch chuyển trên manti", 
+                "Hai mảng xô vào nhau tạo ra núi cao", "Hai mảng tách xa nhau tạo sống núi ngầm", 
+                "Vùng ranh giới mảng thường có động đất"
+            ],
+            falseFacts: [
+                "Thạch quyển chính là vỏ Trái Đất", "Thạch quyển nằm sâu trong nhân Trái Đất", 
+                "Thạch quyển là một khối liên tục không gãy vỡ", "Các mảng kiến tạo đứng yên một chỗ", 
+                "Vỏ đại dương dày hơn vỏ lục địa", "Himalaya hình thành do 2 mảng tách xa", 
+                "Vùng trung tâm mảng thường có động đất"
+            ],
+            viralEvents: [
+                { type: 'blackout' }, // Sự kiện mất điện 10s mới
+                { type: '3s', q: "Hai mảng XÔ VÀO NHAU tạo ra địa hình gì?", correct: "Núi cao / Vực sâu", wrong: "Sống núi ngầm" },
+                { type: '3s', q: "Hai mảng TÁCH XA NHAU tạo ra địa hình gì?", correct: "Sống núi ngầm", wrong: "Núi đồ sộ" }
+            ],
+            bossQuestion: {
+                q: "Theo thuyết kiến tạo mảng, nguyên nhân sinh ra các hiện tượng động đất, núi lửa là do đâu?",
+                correct: "Sự dịch chuyển và cọ xát của các mảng kiến tạo.",
+                wrongs: ["Do sự tác động của ngoại lực như gió, mưa.", "Do lớp vỏ Trái Đất quá mỏng.", "Do con người khai thác quá mức."]
+            }
+        };
+
+        let playerName = "", playerClass = "", currentDiff = 'easy';
+        let interaction = 50, viewers = 1200, timeLeft = 0;
+        let timerInterval;
+        let isMuted = false, isGameOver = false, hasRevived = false;
+        let mistakes = []; 
+        let currentState = 'NORMAL'; 
+        let currentItem = null;
+        let viralTimer, viralTimeLeft;
+        let questionPool = []; 
+
+        const chatNames = ["user99", "dia_li_pro", "hoc_sinh_ngu", "master_dia", "fan_cung", "anti_fan", "meo_luoi"];
+        const positiveChats = ["Idol nói chuẩn quá!", "10 điểm không có nhưng", "Đã hiểu bài rùi", "Quá đỉnh", "Ghim cmt này", "Chính xác luôn"];
+        const negativeChats = ["Idol nói xàm", "Trời ơi sai bét", "Chặn kênh đi", "Học lại lớp 10 đi", "Spam 11111", "Treo luồng"];
+
+        const encodeData = (data) => btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+        const decodeData = (str) => JSON.parse(decodeURIComponent(escape(atob(str))));
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Xử lý Cửa ải Phòng chờ - Mở Audio Autoplay
+            setTimeout(() => { 
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('preloader-text').style.display = 'none';
+                document.getElementById('enter-btn-container').style.display = 'block';
+            }, 1200);
+
+            document.getElementById('enter-studio-btn').addEventListener('click', () => {
+                document.getElementById('preloader').style.display = 'none';
+                document.getElementById('login-screen').style.display = 'flex';
+                playBGM(0.4); 
+            });
+
+            document.getElementById('player-name').addEventListener('input', checkForm);
+            document.getElementById('player-class').addEventListener('input', checkForm);
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('mute-btn').addEventListener('click', toggleMute);
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+            document.getElementById('copy-btn').addEventListener('click', copyReport);
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && !isGameOver && document.getElementById('game-screen').style.display === 'flex') {
+                    clearInterval(timerInterval);
+                } else if (!document.hidden && !isGameOver && document.getElementById('game-screen').style.display === 'flex') {
+                    timerInterval = setInterval(tick, 1000);
+                }
+            });
+
+            // Tọa độ Spotlight cho sự kiện Mất Điện
+            const updateSpotlight = (e) => {
+                const rect = document.getElementById('game-screen').getBoundingClientRect();
+                let x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                let y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                document.getElementById('blackout-overlay').style.setProperty('--x', x + 'px');
+                document.getElementById('blackout-overlay').style.setProperty('--y', y + 'px');
+            };
+            document.getElementById('game-screen').addEventListener('mousemove', updateSpotlight);
+            document.getElementById('game-screen').addEventListener('touchmove', (e) => {
+                if(currentState === 'BLACKOUT') e.preventDefault(); // Tránh cuộn trang khi đang rọi đèn
+                updateSpotlight(e);
+            }, {passive: false});
+        });
+
+        function setupCanvasDPI() {
+            const wrapper = document.getElementById('app-container');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = wrapper.clientWidth * dpr;
+            canvas.height = wrapper.clientHeight * dpr;
+            ctx.scale(dpr, dpr);
+            canvas.style.width = `${wrapper.clientWidth}px`;
+            canvas.style.height = `${wrapper.clientHeight}px`;
+        }
+
+        function selectDiff(level) {
+            currentDiff = level;
+            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.diff-btn[data-level="${level}"]`).classList.add('active');
+        }
+
+        function checkForm() {
+            playerName = document.getElementById('player-name').value.trim();
+            playerClass = document.getElementById('player-class').value.trim();
+            document.getElementById('start-btn').disabled = !(playerName && playerClass);
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊";
+            ['bgm', 'sfx-clap', 'sfx-aww', 'sfx-viral', 'sfx-win', 'sfx-lose', 'sfx-poweroff', 'sfx-heartbeat'].forEach(id => document.getElementById(id).muted = isMuted);
+        }
+
+        function playSound(id, vol=1) { 
+            if(!isMuted){ 
+                let a = document.getElementById(id); 
+                a.currentTime=0; a.volume=vol; a.play().catch(()=>{}); 
+            } 
+        }
+
+        function playBGM(vol=1) {
+            if(!isMuted){ 
+                let a = document.getElementById('bgm'); 
+                a.volume=vol; 
+                if(a.paused) a.play().catch(()=>{}); 
+            }
+        }
+
+        function buildQuestionPool() {
+            questionPool = [];
+            gameConfig.trueFacts.forEach(q => questionPool.push({ text: q, isTrue: true }));
+            gameConfig.falseFacts.forEach(q => questionPool.push({ text: q, isTrue: false }));
+            questionPool.sort(() => Math.random() - 0.5);
+        }
+
+        function startGame() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            document.getElementById('app-container').classList.remove('epic-win-bg');
+            document.getElementById('chat-feed').innerHTML = "";
+            document.getElementById('flashcard-box').style.display = 'none';
+            document.getElementById('mistake-list').innerHTML = "";
+            
+            // Tắt hiệu ứng mất điện nếu đang bật
+            document.getElementById('blackout-overlay').classList.remove('active');
+            document.getElementById('glitch-warning').style.display = 'none';
+            document.getElementById('sfx-heartbeat').pause();
+            
+            setupCanvasDPI(); window.addEventListener('resize', setupCanvasDPI);
+            playBGM(0.3);
+            
+            timeLeft = gameConfig.timeLimit[currentDiff];
+            interaction = 40; viewers = 1200;
+            isGameOver = false; hasRevived = false; mistakes = []; particles = [];
+            currentState = 'NORMAL';
+            
+            buildQuestionPool(); 
+            
+            updateHUD();
+            nextNormalEvent();
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(tick, 1000);
+            requestAnimationFrame(renderParticles);
+        }
+
+        function updateHUD() {
+            if(interaction > 100) interaction = 100;
+            if(interaction < 0) interaction = 0;
+            
+            document.getElementById('inter-bar').style.width = `${interaction}%`;
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('viewers').innerText = viewers.toLocaleString();
+            
+            if(interaction < 30) {
+                document.getElementById('hint-toast').classList.add('show');
+            } else {
+                document.getElementById('hint-toast').classList.remove('show');
+            }
+        }
+
+        function tick() {
+            if(isGameOver) return;
+            timeLeft--;
+            
+            let dropRate = (currentDiff === 'hard') ? 3 : 2;
+            if(currentState === 'NORMAL') {
+                interaction -= dropRate; 
+                viewers -= 50;
+            }
+            updateHUD();
+
+            if(interaction <= 0) {
+                if(!hasRevived) { hasRevived = true; checkRevive(); }
+                else { handleGameOver(false); }
+                return;
+            }
+
+            if(timeLeft <= 0) {
+                handleGameOver(true);
+                return;
+            }
+
+            if(currentState === 'NORMAL' && timeLeft > 10 && Math.random() < 0.1) {
+                triggerViralEvent();
+            }
+        }
+
+        function nextNormalEvent() {
+            currentState = 'NORMAL';
+            if(questionPool.length === 0) buildQuestionPool();
+            currentItem = questionPool.pop();
+
+            const box = document.getElementById('event-box');
+            box.innerHTML = `
+                <div style="color:#aaa; font-size:12px; margin-bottom:5px; text-align:center;">💬 BÌNH LUẬN ĐANG GHIM:</div>
+                <div class="comment-card">"${currentItem.text}"</div>
+                <div class="mod-buttons">
+                    <button class="mod-btn btn-true" onclick="answerNormal(true)">✅ ĐÚNG VẬY</button>
+                    <button class="mod-btn btn-false" onclick="answerNormal(false)">❌ TÀO LAO</button>
+                </div>
+            `;
+            addChatMsg(chatNames[Math.floor(Math.random()*chatNames.length)], currentItem.text);
+        }
+
+        function answerNormal(playerChoice) {
+            if(playerChoice === currentItem.isTrue) {
+                interaction += 15; viewers += 300;
+                playSound('sfx-clap', 1);
+                spawnParticles(['🌹', '🚀', '🎓', '🌿'], 15);
+                addChatMsg(chatNames[Math.floor(Math.random()*chatNames.length)], positiveChats[Math.floor(Math.random()*positiveChats.length)]);
+            } else {
+                interaction -= 20; viewers -= 400;
+                playSound('sfx-aww', 1);
+                triggerErrorEffect();
+                spawnParticles(['😭', '😡', '🔥', '💔'], 15);
+                addChatMsg(chatNames[Math.floor(Math.random()*chatNames.length)], negativeChats[Math.floor(Math.random()*negativeChats.length)]);
+                if(!mistakes.includes(currentItem.text)) mistakes.push("Nhầm lẫn: " + currentItem.text);
+            }
+            updateHUD();
+            if(interaction <= 0) {
+                if(!hasRevived) { hasRevived = true; checkRevive(); }
+                else { handleGameOver(false); }
+            } else {
+                // Nếu đang ở màn Blackout thì quay về Blackout
+                if(currentState === 'BLACKOUT') {
+                    // Cố ý không làm gì, timer blackout sẽ tự tắt
+                } else {
+                    nextNormalEvent();
+                }
+            }
+        }
+
+        // --- CÁC SỰ KIỆN VIRAL (Bao gồm Blackout) ---
+        function triggerViralEvent() {
+            let event = gameConfig.viralEvents[Math.floor(Math.random() * gameConfig.viralEvents.length)];
+            
+            if(event.type === 'blackout') {
+                triggerBlackout();
+            } else {
+                currentState = 'VIRAL';
+                playSound('sfx-viral', 1);
+                const box = document.getElementById('event-box');
+                viralTimeLeft = 3;
+                box.innerHTML = `
+                    <div class="viral-box">
+                        <div class="viral-title">⚡ CÂU HỎI SIÊU NHANH (3s) ⚡</div>
+                        <div class="viral-timer-bar"><div class="viral-timer-fill" id="v-timer"></div></div>
+                        <div class="viral-q">${event.q}</div>
+                        <div class="viral-options" id="v-opts"></div>
+                    </div>
+                `;
+                let opts = [event.correct, event.wrong].sort(()=> Math.random()-0.5);
+                opts.forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'viral-opt';
+                    btn.innerText = opt;
+                    btn.onclick = () => answerViral(opt === event.correct, event);
+                    document.getElementById('v-opts').appendChild(btn);
+                });
+
+                viralTimer = setInterval(() => {
+                    viralTimeLeft -= 0.1;
+                    document.getElementById('v-timer').style.width = `${(viralTimeLeft/3)*100}%`;
+                    if(viralTimeLeft <= 0) { answerViral(false, event); }
+                }, 100);
+            }
+        }
+
+        // SỰ KIỆN MẤT ĐIỆN STUDIO 10 GIÂY
+        function triggerBlackout() {
+            currentState = 'BLACKOUT';
+            playSound('sfx-poweroff', 1);
+            playSound('sfx-heartbeat', 0.8);
+            document.getElementById('bgm').volume = 0.1; // Nhỏ nhạc nền lại
+            
+            const overlay = document.getElementById('blackout-overlay');
+            const glitchText = document.getElementById('glitch-warning');
+            
+            overlay.classList.add('active');
+            glitchText.style.display = 'block';
+
+            // Reset spotlight to middle initially
+            const rect = document.getElementById('game-screen').getBoundingClientRect();
+            overlay.style.setProperty('--x', (rect.width/2) + 'px');
+            overlay.style.setProperty('--y', (rect.height/2) + 'px');
+
+            // Set up 1 câu hỏi Normal nhưng bắt buộc phải tự rọi đèn để tìm
+            if(questionPool.length === 0) buildQuestionPool();
+            currentItem = questionPool.pop();
+            const box = document.getElementById('event-box');
+            box.innerHTML = `
+                <div style="color:#aaa; font-size:12px; margin-bottom:5px; text-align:center;">💬 BÌNH LUẬN TRONG BÓNG TỐI:</div>
+                <div class="comment-card">"${currentItem.text}"</div>
+                <div class="mod-buttons">
+                    <button class="mod-btn btn-true" onclick="answerBlackout(true)">✅ ĐÚNG VẬY</button>
+                    <button class="mod-btn btn-false" onclick="answerBlackout(false)">❌ TÀO LAO</button>
+                </div>
+            `;
+
+            viralTimeLeft = 10; // 10 giây để tìm và trả lời
+            viralTimer = setInterval(() => {
+                viralTimeLeft -= 0.1;
+                if(viralTimeLeft <= 0) { 
+                    // Hết 10s mà chưa trả lời -> Tính là sai
+                    answerBlackout(null); 
+                }
+            }, 100);
+        }
+
+        function answerBlackout(playerChoice) {
+            clearInterval(viralTimer);
+            document.getElementById('blackout-overlay').classList.remove('active');
+            document.getElementById('glitch-warning').style.display = 'none';
+            document.getElementById('sfx-heartbeat').pause();
+            document.getElementById('bgm').volume = 0.3; // Phục hồi nhạc nền
+
+            if(playerChoice === currentItem.isTrue) {
+                interaction += 30; viewers += 800; // Thưởng cao vì khó
+                playSound('sfx-clap', 1);
+                spawnParticles(['💡', '🚀', '🌟'], 20);
+                addChatMsg("HỆ THỐNG", "Mắt tinh như cú! Quá xuất sắc!");
+            } else {
+                interaction -= 35; viewers -= 600; // Phạt nặng
+                playSound('sfx-aww', 1);
+                triggerErrorEffect();
+                spawnParticles(['😭', '😡', '🔥', '💥'], 20);
+                addChatMsg("HỆ THỐNG", "Mò mẫm trong đêm và thất bại!");
+                if(!mistakes.includes(currentItem.text)) mistakes.push("Sai trong bóng tối: " + currentItem.text);
+            }
+            updateHUD();
+            if(interaction <= 0) {
+                if(!hasRevived) { hasRevived = true; checkRevive(); }
+                else { handleGameOver(false); }
+            } else {
+                nextNormalEvent();
+            }
+        }
+
+        function answerViral(isCorrect, event) {
+            clearInterval(viralTimer);
+            if(isCorrect) {
+                interaction += 25; viewers += 1000;
+                playSound('sfx-clap', 1);
+                spawnParticles(['👑', '🚀', '🎉', '🎓'], 25);
+                addChatMsg("HỆ THỐNG", "Khoảnh khắc xuất thần! Fan donate khủng!");
+            } else {
+                interaction -= 30; viewers -= 800;
+                playSound('sfx-aww', 1);
+                triggerErrorEffect();
+                spawnParticles(['💩', '😡', '👎', '💔'], 20);
+                addChatMsg("HỆ THỐNG", "Xử lý cồng kềnh, fan quay lưng!");
+                if(!mistakes.includes(event.q)) mistakes.push("Sai tình huống: " + event.q);
+            }
+            updateHUD();
+            if(interaction <= 0) {
+                if(!hasRevived) { hasRevived = true; checkRevive(); }
+                else { handleGameOver(false); }
+            } else {
+                nextNormalEvent();
+            }
+        }
+
+        function addChatMsg(user, text) {
+            const feed = document.getElementById('chat-feed');
+            const msg = document.createElement('div');
+            msg.className = 'chat-msg';
+            msg.innerHTML = `<span class="chat-user">${user}:</span> ${text}`;
+            feed.appendChild(msg);
+            if(feed.children.length > 5) feed.removeChild(feed.firstChild);
+        }
+
+        function triggerErrorEffect() {
+            document.getElementById('app-container').classList.add('shake');
+            document.getElementById('game-screen').classList.add('flash-red');
+            setTimeout(()=>{ 
+                document.getElementById('app-container').classList.remove('shake'); 
+                document.getElementById('game-screen').classList.remove('flash-red');
+            }, 400);
+        }
+
+        function spawnParticles(emojis, count) {
+            const wrapper = document.getElementById('app-container');
+            for(let i=0; i<count; i++) {
+                particles.push({
+                    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+                    x: Math.random() * wrapper.clientWidth,
+                    y: wrapper.clientHeight, 
+                    vx: (Math.random() - 0.5) * 6, 
+                    vy: -(Math.random() * 15 + 12), 
+                    life: 1,
+                    size: Math.random() * 40 + 35 
+                });
+            }
+        }
+
+        function renderParticles() {
+            if(isGameOver) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.vy += 0.12; 
+                p.life -= 0.005; 
+                
+                ctx.globalAlpha = p.life < 0 ? 0 : p.life;
+                ctx.font = `${p.size}px Arial`;
+                ctx.fillText(p.emoji, p.x, p.y);
+                ctx.globalAlpha = 1;
+
+                if(p.life <= 0 || p.y > canvas.height + 50) particles.splice(i, 1);
+            }
+            requestAnimationFrame(renderParticles);
+        }
+
+        function checkRevive() {
+            clearInterval(timerInterval);
+            clearInterval(viralTimer);
+            document.getElementById('blackout-overlay').classList.remove('active');
+            document.getElementById('sfx-heartbeat').pause();
+
+            const modal = document.getElementById('boss-modal');
+            const qBox = document.getElementById('boss-q-text');
+            const optBox = document.getElementById('boss-options');
+            
+            qBox.innerText = gameConfig.bossQuestion.q;
+            optBox.innerHTML = "";
+            
+            let opts = [...gameConfig.bossQuestion.wrongs, gameConfig.bossQuestion.correct].sort(()=> Math.random()-0.5);
+            opts.forEach(opt => {
+                let btn = document.createElement('button');
+                btn.className = 'boss-opt';
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    modal.style.display = 'none';
+                    if(opt === gameConfig.bossQuestion.correct) {
+                        interaction = 40; 
+                        updateHUD();
+                        document.getElementById('bgm').volume = 0.3;
+                        timerInterval = setInterval(tick, 1000);
+                        nextNormalEvent();
+                    } else {
+                        handleGameOver(false);
+                    }
+                };
+                optBox.appendChild(btn);
+            });
+            modal.style.display = 'flex';
+        }
+
+        function saveLeaderboard() {
+            let boardStr = localStorage.getItem('geoV5LiveBoard');
+            let board = [];
+            if(boardStr) { try { board = decodeData(boardStr); } catch(e) { board = []; } }
+            
+            let score = 0;
+            if(timeLeft <= 0 && interaction > 0) {
+                score = (interaction / 100) * 10;
+                score = Math.round(score * 10) / 10;
+            }
+            if(score > 10) score = 10;
+
+            board.push({ name: playerName, class: playerClass, score: score, diff: currentDiff, date: new Date().getTime() });
+            board.sort((a, b) => b.score - a.score);
+            board = board.slice(0, 5);
+            
+            localStorage.setItem('geoV5LiveBoard', encodeData(board));
+            return { board, finalScore: score };
+        }
+
+        function renderLeaderboard(board, finalScore) {
+            const container = document.getElementById('lb-content');
+            container.innerHTML = "";
+            const medals = ["🥇", "🥈", "🥉", "4.", "5."];
+            board.forEach((entry, idx) => {
+                let isMe = (entry.name === playerName && entry.score === finalScore);
+                let div = document.createElement('div');
+                div.className = `lb-item ${isMe ? 'me' : ''}`;
+                div.innerHTML = `<span>${medals[idx]} ${entry.name} (${entry.class})</span><span>${entry.score}/10đ</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function handleGameOver(isWin) {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            clearInterval(viralTimer);
+            document.getElementById('bgm').pause();
+            document.getElementById('sfx-heartbeat').pause();
+
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'flex';
+            
+            let resultData = saveLeaderboard();
+            document.getElementById('final-info').innerText = `IDOL: ${playerName} | Lớp: ${playerClass}`;
+            renderLeaderboard(resultData.board, resultData.finalScore);
+
+            const bonusText = document.getElementById('bonus-text');
+            const resultTitle = document.getElementById('result-title');
+            
+            if (isWin) {
+                playSound('sfx-win', 1);
+                triggerConfetti();
+                document.getElementById('app-container').classList.add('epic-win-bg');
+                document.getElementById('result-emoji').innerText = "👑";
+                resultTitle.innerText = "TOP TRENDING KIẾN THỨC";
+                resultTitle.style.color = "#000";
+                
+                if(!hasRevived) {
+                    bonusText.innerHTML = `ĐIỂM: ${resultData.finalScore}/10<br>+0.5 ĐIỂM THƯỞNG`;
+                } else {
+                    bonusText.innerHTML = `ĐIỂM: ${resultData.finalScore}/10<br>+0.25 ĐIỂM THƯỞNG (Có Hồi sinh)`;
+                }
+            } else {
+                playSound('sfx-lose', 1);
+                document.getElementById('result-emoji').innerText = "📉";
+                resultTitle.innerText = "KÊNH BỊ ĐÌNH CHỈ";
+                bonusText.innerHTML = "ĐIỂM: 0/10<br>CHƯA ĐẠT ĐIỂM THƯỞNG";
+                bonusText.style.color = "var(--danger)";
+            }
+
+            if(mistakes.length > 0) {
+                document.getElementById('flashcard-box').style.display = 'block';
+                const ul = document.getElementById('mistake-list');
+                ul.innerHTML = "";
+                mistakes.slice(-4).forEach(m => {
+                    let li = document.createElement('li');
+                    li.innerText = m;
+                    ul.appendChild(li);
+                });
+            }
+        }
+
+        function copyReport() {
+            let bonus = (timeLeft <= 0 && interaction > 0) ? (hasRevived ? "+0.25đ" : "+0.5đ") : "0đ";
+            let errStr = mistakes.length > 0 ? mistakes.slice(-3).join(" | ") : "Không có";
+            let finalScore = (timeLeft <= 0 && interaction > 0) ? Math.round((interaction/100)*10 *10)/10 : 0;
+            
+            let text = `[Livestream Kiến Tạo] - ${playerName} - ${playerClass} - Điểm: ${finalScore}/10 (${bonus}) - Nhầm lẫn: ${errStr}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                let btn = document.getElementById('copy-btn');
+                btn.innerText = "✅ ĐÃ SAO CHÉP";
+                setTimeout(() => btn.innerText = "📋 CHÉP BÁO CÁO", 3000);
+            });
+        }
+
+        function triggerConfetti() {
+            var duration = 3 * 1000; var animationEnd = Date.now() + duration; var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) { return clearInterval(interval); }
+                var particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+    </script>
+</body>
+</html>
